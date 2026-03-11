@@ -115,14 +115,41 @@ def infer_actual_date(weekday_str):
 # Function to load data
 @st.cache_data
 def load_data():
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend', 'pipeline', 'dance_events.db')
-    if not os.path.exists(db_path):
+    # Try multiple possible paths for the database
+    possible_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend', 'pipeline', 'dance_events.db'),
+        os.path.join('backend', 'pipeline', 'dance_events.db'),
+        'backend/pipeline/dance_events.db',
+        'dance_events.db'
+    ]
+    
+    db_path = None
+    for p in possible_paths:
+        if os.path.exists(p):
+            db_path = p
+            break
+    
+    # Last resort: Search for it
+    if not db_path:
+        for root, dirs, files in os.walk('.'):
+            if 'dance_events.db' in files:
+                db_path = os.path.join(root, 'dance_events.db')
+                break
+            
+    if not db_path:
         return pd.DataFrame()
-    conn = sqlite3.connect(db_path)
-    df = pd.read_sql_query("SELECT name, date, start_time, city, venue, organizer, website, source FROM events", conn)
-    conn.close()
-    df['calculated_date'] = df['date'].apply(infer_actual_date)
-    return df
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        df = pd.read_sql_query("SELECT name, date, start_time, city, venue, organizer, website, source FROM events", conn)
+        conn.close()
+        
+        # Enrich data with inferred dates
+        df['calculated_date'] = df['date'].apply(infer_actual_date)
+        return df
+    except Exception as e:
+        st.error(f"Error reading database at {db_path}: {e}")
+        return pd.DataFrame()
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.markdown(f"<h2 style='color:#8b0000; text-align:center;'>AVI WIN</h2>", unsafe_allow_html=True)
