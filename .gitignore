@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.streamlit/
+.venv/
+venv/
+node_modules/
+.DS_Store
+.env
+# Keep the database for the PoC so the dashboard has data even without running scrapers
+# dance_events.db 
